@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>american mall explorer</title>
+   
+   <meta property="og:image" content="/sears.png">
+    <meta property="og:title" content="american mall explorer">
+    <meta property="og:description" content="a game by cindy casio that drops you into a random north american mall">
+    <meta property="og:url" content="https://isdn.nekoweb.org/mall.html">
+    <meta property="og:type" content="website">
+   
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        #pano-container {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 120px);
+            border-radius: 0;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+            margin-bottom: 1rem;
+        }
+
+
+        .pano-iframe-style {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            pointer-events: none;
+        }
+
+        .pano-iframe-active {
+            opacity: 1;
+            z-index: 1;
+            pointer-events: auto;
+        }
+
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background-color: #1a1a1a;
+            border-radius: 0;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+        }
+        .btn {
+            background: #222;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.15);
+            color: #fff;
+            text-transform: lowercase;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0;
+            font-weight: 600;
+            transition: all 0.3s ease-in-out;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn:hover {
+            background: linear-gradient(145deg, #666, #333);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            color: #fff;
+            text-transform: lowercase;
+            font-weight: 700;
+            font-size: 2.25rem;
+            text-shadow: none;
+        }
+        .text-sm {
+            color: #ccc;
+            text-transform: lowercase;
+            text-shadow: none;
+        }
+        strong {
+            color: #fff;
+            font-weight: 700;
+        }
+        #messageBox {
+            text-transform: lowercase;
+            font-weight: 400;
+            text-shadow: none;
+            border-radius: 0;
+     
+        }
+
+
+        @media (max-width: 768px) {
+            #pano-container {
+                height: 70vh;
+            }
+            .button-group {
+                flex-direction: column;
+                align-items: center;
+                gap: 0.75rem;
+            }
+            .btn {
+                width: 80%;
+            }
+        }
+    </style>
+    <script>
+        const fixedMallLocations = [
+             "https://www.google.com/maps/embed?pb=!4v1749772827375!6m8!1m7!1sRq959N92QZYLnf-eT8rL_Q!2m2!1d41.46790662726286!2d-87.31185963387634!3f330.179546415876!4f-6.724780071534894!5f0.7820865974627469" ,
+             "https://www.google.com/maps/embed?pb=!4v1749779127408!6m8!1m7!1sXnzjagT32Lq0aMCExYJ9ow!2m2!1d42.31824238581479!2d-83.22355096610704!3f105.5289292967834!4f10.564202592652236!5f0.7820865974627469" ,
+             "https://www.google.com/maps/embed?pb=!4v1749781299324!6m8!1m7!1sAMX3P8R-M7KLd9WeWbZhmQ!2m2!1d38.25978805912623!2d-122.0520767881474!3f246.10525934163638!4f-6.245935585227187!5f0.7820865974627469" ,
+             "https://www.google.com/maps/embed?pb=!4v1749782419407!6m8!1m7!1sCAoSF0NJSE0wb2dLRUlDQWdJREVxNzd5cWdF!2m2!1d29.77472346529084!2d-95.80971803043761!3f254.22990602403647!4f4.41999495468491!5f0.7820865974627469" ,
+             "https://www.google.com/maps/embed?pb=!4v1749782323072!6m8!1m7!1sCAoSF0NJSE0wb2dLRUlDQWdJQ0V4NkxjLWdF!2m2!1d29.42411909406827!2d-95.05766760239499!3f310.8750956040895!4f-10.788374354445708!5f0.7820865974627469" ,
+             "https://www.google.com/maps/embed?pb=!4v1749782959345!6m8!1m7!1sU3INvR7rgGGAgetysICdWQ!2m2!1d29.77990224848322!2d-95.54116650458221!3f272.52319561230576!4f-1.8640621403122424!5f0.7820865974627469" ,
+             "https://www.google.com/maps/embed?pb=!4v1749783641547!6m8!1m7!1sx9hzj1FJ1jZ2FS5mC-FFgw!2m2!1d33.03142755042662!2d-96.8329590436666!3f134.43132907458215!4f9.068770512101779!5f0.7820865974627469" ,
+             "https://www.google.com/maps/embed?pb=!4v1749784234263!6m8!1m7!1s33TpPxDenZUy3_wPcvHkdQ!2m2!1d39.91552653773758!2d-75.3517073281404!3f178.2012387708189!4f-5.445794561992116!5f0.7820865974627469" ,
+             "https://www.google.com/maps/embed?pb=!4v1749787913550!6m8!1m7!1s4WJuUaus7C7JxOnpHyh20Q!2m2!1d33.52194999030488!2d-112.0941785994646!3f359.6433934449306!4f-3.871939368853859!5f0.7820865974627469" ,
+             "https://www.google.com/maps/embed?pb=!4v1749790107015!6m8!1m7!1sgyTkpsSFiZDPChZXR0dOEA!2m2!1d37.1131372460732!2d-76.4967372207225!3f58.32666430845403!4f-2.560106181393536!5f0.7820865974627469" ,
+             "https://www.google.com/maps/embed?pb=!4v1749790290227!6m8!1m7!1sWn9GtKR0F5XzxKqcH22C2Q!2m2!1d38.77471490986498!2d-77.17538173698446!3f116.51281372405566!4f-10.952773239439196!5f0.7820865974627469" ,
+             "https://www.google.com/maps/embed?pb=!4v1749791543185!6m8!1m7!1sWL1BR2KxtLWEUJOEy5HgcQ!2m2!1d34.93661494176181!2d-89.9906202519329!3f247.91026339361338!4f6.291287815823026!5f0.7820865974627469" 
+        ];
+
+        let currentIframeIndex = 0;
+        let isLoading = false;
+
+        function parseStreetViewUrl(urlString) {
+            try {
+                const url = new URL(urlString);
+                const params = new URLSearchParams(url.search);
+
+                const locationParam = params.get('location');
+                const panoIdParam = params.get('pano');
+                const pbParam = params.get('pb');
+
+                let lat, lng;
+                let name = "unknown location";
+
+                if (locationParam) {
+                    const coords = locationParam.split(',').map(Number);
+                    if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+                        lat = coords[0];
+                        lng = coords[1];
+                        name = `location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+                    }
+                } else if (panoIdParam) {
+                    name = `mall id: ${panoIdParam.substring(0, 10)}...`;
+                } else if (pbParam) {
+                    name = `new mall`;
+                }
+
+                if (lat && lng || panoIdParam || pbParam) {
+                    return {
+                        name: name,
+                        originalUrl: urlString
+                    };
+                }
+            } catch (e) {
+              
+            }
+            return null;
+        }
+
+        function nextFixedMall() {
+            if (isLoading) {
+                displayMessage("loading...");
+                return;
+            }
+
+            
+
+            isLoading = true;
+            const nextIframeIndex = (currentIframeIndex === 0) ? 1 : 0;
+            const currentIframe = document.getElementById(`pano-iframe-${currentIframeIndex + 1}`);
+            const nextIframe = document.getElementById(`pano-iframe-${nextIframeIndex + 1}`);
+
+            const randomIndex = Math.floor(Math.random() * fixedMallLocations.length);
+            const urlToLoad = fixedMallLocations[randomIndex];
+            const locationDetails = parseStreetViewUrl(urlToLoad);
+
+            if (!locationDetails) {
+                nextFixedMall();
+                return;
+            }
+
+            nextIframe.src = locationDetails.originalUrl;
+            nextIframe.onload = () => {
+                currentIframe.classList.remove('pano-iframe-active');
+                nextIframe.classList.add('pano-iframe-active');
+
+                currentIframeIndex = nextIframeIndex;
+                isLoading = false;
+
+                nextIframe.onload = null;
+            };
+
+            nextIframe.onerror = () => {
+                isLoading = false;
+                
+            };
+        }
+
+        function displayMessage(message, type) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.className = `p-4 text-center mt-4 mb-4 ${type === 'error' ? 'bg-red-800 text-red-100' : 'bg-blue-800 text-blue-100'}`;
+            messageBox.style.display = 'block';
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 5000);
+        }
+
+        window.onload = function() {
+            nextFixedMall();
+        };
+    </script>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="container p-6 shadow-2xl">
+        <h1 class="text-4xl font-extrabold text-center mb-6">
+           <center> american mall explorer </center>
+        </h1>
+
+        <div id="pano-container">
+            <iframe id="pano-iframe-1" class="pano-iframe-style" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+            <iframe id="pano-iframe-2" class="pano-iframe-style" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+
+        <div id="messageBox" class="hidden"></div>
+
+        <div class="button-group">
+            <button style="width: 150px; height: 50px;" class="btn" onclick="nextFixedMall()"><font size="3">next location</font></button>
+        </div>
+
+        <p></p>
+            <center> <strong class="font-bold">American Mall Explorer is a browser-based "game" from Cindy Casio that throws you into a random North American mall.</strong></center>
+            &nbsp;
+            <center>Click the "next location" button to visit another random mall. Press the numbers on the right for floors.</center>
+        </p>
+
+</body>
+</html>
