@@ -1,5 +1,4 @@
-<html>
-<head><title>SimpleTone</title>
+<html><head><title>SimpleTone</title>
 <style>
 body{background:#000;color:#0ff;font-family:courier,monospace;text-align:center}
 h1{color:#0ff;margin-bottom:5px;font-size:20px}
@@ -11,54 +10,224 @@ h1{color:#0ff;margin-bottom:5px;font-size:20px}
 .wide{width:260px;height:45px}
 select{background:#000;color:#0ff;border:1px solid #0ff;font-size:14px;margin:10px}
 table{margin:5px auto;border-spacing:5px}
-</style>
-</head>
-<body>
+</style></head><body>
 <br>
-<h1>SimpleTone</h1><br>
-<div id=lcd>READY</div><br>
+<h1 style="color:#0ff;font-size:20px;">SimpleTone</h1>
+<br>
+<div id=lcd>READY</div>
+<br>
 <table>
 <tr><td><button id=kpBtn class=btn onclick="playKey('KP')">KP</button></td><td><button class=btn onclick="playKey('1')">1</button></td><td><button class=btn onclick="playKey('2')">2</button></td></tr>
 <tr><td><button class=btn onclick="playKey('3')">3</button></td><td><button class=btn onclick="playKey('4')">4</button></td><td><button class=btn onclick="playKey('5')">5</button></td></tr>
 <tr><td><button class=btn onclick="playKey('6')">6</button></td><td><button class=btn onclick="playKey('7')">7</button></td><td><button class=btn onclick="playKey('8')">8</button></td></tr>
 <tr><td><button class=btn onclick="playKey('9')">9</button></td><td><button class=btn onclick="playKey('0')">0</button></td><td><button id=stBtn class=btn onclick="playKey('ST')">ST</button></td></tr>
 </table>
-<button id=hzBtn class="btn wide" onclick=toggleTone()>2600HZ</button><br><br>
-<div id=coinTones style="margin-bottom:10px;">
+<button id=hzBtn class="btn wide" onclick="toggleTone()">2600HZ</button><br><br>
+<div id=coinTones style="margin-bottom:10px;display:inline-block;">
 <button class=btn-red onclick="playRed(1,'5C')">5C</button>
 <button class=btn-red onclick="playRed(2,'10C')">10C</button>
 <button class=btn-red onclick="playRed(5,'25C')">25C</button>
 </div>
 <br>
-<button id=clrBtn class="btn wide" onclick=clearLCD()>CLR SCRN</button><br><br>
+<button id=clrBtn class="btn wide" onclick="clearLCD()">CLR SCRN</button><br><br>
 <div id=extraBtns></div>
-<select id=mode></select>
+<select id=mode>
+<option value="MF" selected>MF</option>
+<option value="DTMF">DTMF</option>
+<option value="Pulse">Pulse</option>
+<option value="SF">SF</option>
+</select>
 <script>
 var ctx=new (window.AudioContext||window.webkitAudioContext)(),lcd=document.getElementById('lcd'),
 hzBtn=document.getElementById('hzBtn'),kpBtn=document.getElementById('kpBtn'),
 stBtn=document.getElementById('stBtn'),extra=document.getElementById('extraBtns'),
-mode="MF",tones={},dialOn=false,dial1,dial2,dialGain,hzTone=2600,extraOsc=[],howlOsc,howlInt,howlOn=false,howlBurst,dialtoneInt;
+mode="MF",tones={},dialOn=false,dial1,dial2,dialGain,howlOsc,howlGain,howlOn=false,howlInt,dialtoneInt;
+
 var toneSets={
 "MF":{tones:{"KP":[1100,1700],"1":[700,900],"2":[700,1100],"3":[900,1100],"4":[700,1300],"5":[900,1300],"6":[1100,1300],"7":[700,1500],"8":[900,1500],"9":[1100,1500],"0":[1300,1500],"ST":[1500,1700]},hz:2600,kp:"KP",st:"ST",hzLabel:"2600HZ"},
 "DTMF":{tones:{"1":[697,1209],"2":[697,1336],"3":[697,1477],"4":[770,1209],"5":[770,1336],"6":[770,1477],"7":[852,1209],"8":[852,1336],"9":[852,1477],"0":[941,1336],"*":[941,1209],"#":[941,1477],"A":[697,1633],"B":[770,1633],"C":[852,1633],"D":[941,1633]},hz:0,kp:"*",st:"#",hzLabel:"DIALTONE"},
-"Pulse":{tones:{},hz:0,kp:"DT",st:"HOWL",hzLabel:""}
+"Pulse":{tones:{},hz:0,kp:"DT",st:"HOWL",hzLabel:""},
+"SF":{tones:{},hz:2600,kp:"2600",st:"ST",hzLabel:"2600HZ"}
 };
-var modeSelect=document.getElementById('mode');for(var k in toneSets){var o=document.createElement('option');o.value=k;o.text=k;modeSelect.appendChild(o);}
+
+var modeSelect=document.getElementById('mode');
 modeSelect.onchange=function(){setMode(this.value);};
-function setMode(m){stopAll();mode=m;var p=toneSets[m];tones=p.tones;hzTone=p.hz;kpBtn.innerHTML=p.kp;stBtn.innerHTML=p.st;hzBtn.innerHTML=p.hzLabel;clearLCD();extra.innerHTML="";if(m==="DTMF"){extra.innerHTML='<table><tr><td><button class=btn onclick="playKey(\'A\')">A</button></td><td><button class=btn onclick="playKey(\'B\')">B</button></td><td><button class=btn onclick="playKey(\'C\')">C</button></td><td><button class=btn onclick="playKey(\'D\')">D</button></td></tr></table>';hzBtn.style.display="inline-block";document.getElementById('coinTones').style.display='none';}else if(m==="MF"){hzBtn.style.display="inline-block";document.getElementById('coinTones').style.display='inline-block';}else if(m==="Pulse"){hzBtn.style.display="none";document.getElementById('coinTones').style.display='none';}}
-function playTone(freqs,dur,label){muteDialtone(true);append(label);var g=ctx.createGain();g.gain.setValueAtTime(.7,ctx.currentTime);g.connect(ctx.destination);freqs.forEach(f=>{var o=ctx.createOscillator();o.type='sine';o.frequency.setValueAtTime(f,ctx.currentTime);o.connect(g);o.start();o.stop(ctx.currentTime+dur);});setTimeout(()=>muteDialtone(false),dur*1000);}
-function playKey(k){if(mode==="Pulse"){if(k==="KP"){toggleOldDialtone();return;}if(k==="ST"){toggleHowler();return;}return playPulse(k);}var tk=k;if(mode==="DTMF"){if(k==="KP")tk="*";else if(k==="ST")tk="#";}if(tones[tk])playTone(tones[tk],0.25,tk);else append(k);}
-function playRed(bursts,label){muteDialtone(true);append(label);var freqs=[1700,2200],d=.066,p=.015;if(label==='25C')p=.01;var t=ctx.currentTime;for(var i=0;i<bursts;i++){var g=ctx.createGain();g.gain.setValueAtTime(.7,t);g.connect(ctx.destination);for(var j=0;j<freqs.length;j++){var o=ctx.createOscillator();o.type='sine';o.frequency.setValueAtTime(freqs[j],t);o.connect(g);o.start(t);o.stop(t+d);}t+=d+p;}setTimeout(()=>muteDialtone(false),(bursts*(d+p))*1000);}
-function toggleTone(){if(mode==="DTMF"){if(!dialOn){dial1=ctx.createOscillator();dial1.type='sine';dial1.frequency.setValueAtTime(350,ctx.currentTime);dial2=ctx.createOscillator();dial2.type='sine';dial2.frequency.setValueAtTime(440,ctx.currentTime);dialGain=ctx.createGain();dialGain.gain.setValueAtTime(.3,ctx.currentTime);dial1.connect(dialGain);dial2.connect(dialGain);dialGain.connect(ctx.destination);dial1.start();dial2.start();dialOn=true;}else stopAll();}else if(hzTone>0)playTone([hzTone],1,"SEIZE");}
-function muteDialtone(mute){if(dialGain)dialGain.gain.setValueAtTime(mute?0:.3,ctx.currentTime);}
-function stopAll(){if(dialOn){if(dial1)dial1.stop();if(dial2)dial2.stop();dialOn=false;}if(extraOsc.length){extraOsc.forEach(o=>o.stop?o.stop():0);extraOsc=[];}if(howlInt){clearInterval(howlInt);howlInt=null;}if(howlBurst){clearInterval(howlBurst);howlBurst=null;}if(dialtoneInt){clearInterval(dialtoneInt);dialtoneInt=null;}howlOn=false;}
-function playPulse(d){muteDialtone(true);var count=d==="0"?10:parseInt(d),t=ctx.currentTime;for(var i=0;i<count;i++){var clickDur=0.02;var clickFreq=350;var clickGain=0.7;var startTime=t+i*0.09;var osc=ctx.createOscillator();var gain=ctx.createGain();osc.type="square";osc.frequency.setValueAtTime(clickFreq,startTime);gain.gain.setValueAtTime(clickGain,startTime);osc.connect(gain);gain.connect(ctx.destination);osc.start(startTime);osc.stop(startTime+clickDur);}append("PULSE "+d);setTimeout(()=>muteDialtone(false),count*90);}
-function toggleOldDialtone(){if(dialOn){stopAll();return;}append("DT");dialOn=true;dial1=ctx.createOscillator();dial2=ctx.createOscillator();dialGain=ctx.createGain();dial1.type='sine';dial2.type='sine';dial1.frequency.setValueAtTime(600,ctx.currentTime);dial2.frequency.setValueAtTime(120,ctx.currentTime);dialGain.gain.value=0.3;dial1.connect(dialGain);dial2.connect(dialGain.gain);dialGain.connect(ctx.destination);dial1.start();dial2.start();dialtoneInt=setInterval(()=>{if(Math.random()<0.15){dial1.frequency.setValueAtTime(600+((Math.random()-0.5)*5),ctx.currentTime);}},400);}
-function toggleHowler(){if(howlOn){stopAll();return;}append("HOWL");howlOn=true;var g=ctx.createGain();g.gain.value=0;g.connect(ctx.destination);howlOsc=ctx.createOscillator();howlOsc.type='sine';howlOsc.frequency.setValueAtTime(1400,ctx.currentTime);howlOsc.connect(g);howlOsc.start();extraOsc=[howlOsc];var startTime=ctx.currentTime;howlInt=setInterval(()=>{var t=ctx.currentTime-startTime;var freq=1400+600*Math.sin(2*Math.PI*0.25*t);howlOsc.frequency.setValueAtTime(freq,ctx.currentTime);},50);var burstGain=0;var increasing=true;howlBurst=setInterval(()=>{if(increasing){burstGain+=0.02;if(burstGain>=0.4)increasing=false;}else{burstGain-=0.02;if(burstGain<=0)increasing=true;}g.gain.setValueAtTime(burstGain,ctx.currentTime);},100);}
-function clearLCD(){lcd.innerHTML="READY";}
-function append(t){if(lcd.innerHTML==="READY")lcd.innerHTML="";lcd.innerHTML+=t+" ";lcd.scrollLeft=lcd.scrollWidth;}
-document.addEventListener('keydown',function(e){if(document.activeElement===modeSelect){e.preventDefault();return;}var k=e.key.toUpperCase();if(k>='0'&&k<='9')playKey(k);else if(k==='K')playKey('KP');else if(k==='S')playKey('ST');else if(k==='H')toggleTone();else if(k==='C')clearLCD();if(mode==="DTMF"&&['Q','W','E','R'].includes(k)){var m={'Q':'A','W':'B','E':'C','R':'D'};playKey(m[k]);}if(mode==="MF"&&['Q','W','E'].includes(k)){var m={'Q':[1,'5C'],'W':[2,'10C'],'E':[5,'25C']};playRed(m[k][0],m[k][1]);}});
+
+function setMode(m){
+ stopAll();
+ mode=m;
+ var p=toneSets[m];
+ tones=p.tones;
+ hzTone=p.hz;
+ kpBtn.innerHTML=p.kp;
+ stBtn.innerHTML=p.st;
+ hzBtn.innerHTML=p.hzLabel;
+ clearLCD();
+ extra.innerHTML="";
+ if(m==="DTMF"){
+  extra.innerHTML='<table><tr><td><button class=btn onclick="playKey(\'A\')">A</button></td><td><button class=btn onclick="playKey(\'B\')">B</button></td><td><button class=btn onclick="playKey(\'C\')">C</button></td><td><button class=btn onclick="playKey(\'D\')">D</button></td></tr></table>';
+  hzBtn.style.display="inline-block";
+  document.getElementById('coinTones').style.display='none';
+  kpBtn.style.visibility="visible";
+  stBtn.style.visibility="visible";
+ } else if(m==="MF"){
+  hzBtn.style.display="inline-block";
+  document.getElementById('coinTones').style.display='inline-block';
+  kpBtn.style.visibility="visible";
+  stBtn.style.visibility="visible";
+ } else if(m==="Pulse"){
+  hzBtn.style.display="none";
+  document.getElementById('coinTones').style.display='none';
+  kpBtn.style.visibility="visible";
+  stBtn.style.visibility="visible";
+ } else if(m==="SF"){
+  hzBtn.style.display="inline-block";
+  document.getElementById('coinTones').style.display='none';
+  kpBtn.style.visibility="visible";
+  stBtn.style.visibility="visible";
+ }
+}
+
+function playTone(freqs,dur,label){
+ append(label);
+ var g=ctx.createGain();g.gain.setValueAtTime(.7,ctx.currentTime);g.connect(ctx.destination);
+ freqs.forEach(function(f){var o=ctx.createOscillator();o.type='sine';o.frequency.setValueAtTime(f,ctx.currentTime);o.connect(g);o.start();o.stop(ctx.currentTime+dur);});
+}
+
+function playKey(k){
+ if(mode==="Pulse"){
+  if(k==="KP"){toggleOldDialtone();return;}
+  if(k==="ST"){toggleHowler();return;}
+  return playPulse(k);
+ }
+ if(mode==="SF"){
+  if(k==="KP"){toggleSF2600();return;}
+  if(k==="ST"){playTone([1500,1700],0.25,'ST');return;}
+  return playSF(k);
+ }
+ var tk=k;
+ if(mode==="DTMF"){ if(k==="KP") tk="*"; else if(k==="ST") tk="#"; }
+ if(tones[tk]) playTone(tones[tk],0.25,tk); else append(k);
+}
+
+function playRed(bursts,label){
+ append(label);
+ var freqs=[1700,2200],d=.066,p=.015;
+ if(label==='25C') p=.01;
+ var t=ctx.currentTime;
+ for(var i=0;i<bursts;i++){
+  var g=ctx.createGain();g.gain.setValueAtTime(.7,t);g.connect(ctx.destination);
+  for(var j=0;j<freqs.length;j++){
+   var o=ctx.createOscillator();o.type='sine';o.frequency.setValueAtTime(freqs[j],t);o.connect(g);o.start(t);o.stop(t+d);
+  }
+  t+=d+p;
+ }
+}
+
+function playPulse(d){
+ var count=d==="0"?10:parseInt(d), t=ctx.currentTime;
+ for(var i=0;i<count;i++){
+  var clickDur=0.02, clickFreq=350, clickGain=0.7, startTime=t+i*0.09;
+  var osc=ctx.createOscillator(), gain=ctx.createGain();
+  osc.type="square"; osc.frequency.setValueAtTime(clickFreq,startTime);
+  gain.gain.setValueAtTime(clickGain,startTime);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(startTime); osc.stop(startTime+clickDur);
+ }
+ append("PULSE "+d);
+}
+
+function playSF(d){
+ var count=d==="0"?10:parseInt(d), t=ctx.currentTime;
+ for(var i=0;i<count;i++){
+  var chirp=0.05, start=t+i*0.09;
+  var o=ctx.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(2600,start);
+  var g=ctx.createGain(); g.gain.setValueAtTime(.7,start);
+  o.connect(g); g.connect(ctx.destination);
+  o.start(start); o.stop(start+chirp);
+ }
+ append("SF "+d);
+}
+
+function toggleTone(){
+ if(mode==="DTMF"){
+  if(!dialOn){
+   dial1=ctx.createOscillator(); dial2=ctx.createOscillator(); dialGain=ctx.createGain();
+   dial1.type='sine'; dial2.type='sine';
+   dial1.frequency.setValueAtTime(350,ctx.currentTime);
+   dial2.frequency.setValueAtTime(440,ctx.currentTime);
+   dialGain.gain.setValueAtTime(.3,ctx.currentTime);
+   dial1.connect(dialGain); dial2.connect(dialGain); dialGain.connect(ctx.destination);
+   dial1.start(); dial2.start(); dialOn=true;
+  } else stopAll();
+ } else if(mode==="MF"||mode==="SF"){
+  playTone([2600],1,"2600");
+ }
+}
+
+function toggleOldDialtone(){
+ if(dialOn){ stopAll(); return; }
+ append("DT"); dialOn=true;
+ dial1=ctx.createOscillator(); dial2=ctx.createOscillator(); dialGain=ctx.createGain();
+ dial1.type='sine'; dial2.type='sine';
+ dial1.frequency.setValueAtTime(600,ctx.currentTime);
+ dial2.frequency.setValueAtTime(120,ctx.currentTime);
+ dialGain.gain.value=0.3;
+ dial1.connect(dialGain); dial2.connect(dialGain.gain); dialGain.connect(ctx.destination);
+ dial1.start(); dial2.start();
+ dialtoneInt=setInterval(function(){ if(Math.random()<0.15){ dial1.frequency.setValueAtTime(600+((Math.random()-0.5)*5),ctx.currentTime); } },400);
+}
+
+function toggleSF2600(){
+ if(dialOn){ stopAll(); return; }
+ append("2600"); dialOn=true;
+ dial1=ctx.createOscillator(); dial1.type='sine'; dial1.frequency.setValueAtTime(2600,ctx.currentTime);
+ dialGain=ctx.createGain(); dialGain.gain.setValueAtTime(.3,ctx.currentTime);
+ dial1.connect(dialGain); dialGain.connect(ctx.destination); dial1.start();
+}
+
+function toggleHowler(){
+ if(howlOn){ stopAll(); return; }
+ append("HOWL"); howlOn=true;
+ howlGain=ctx.createGain(); howlGain.gain.value=0; howlGain.connect(ctx.destination);
+ howlOsc=ctx.createOscillator(); howlOsc.type='sine'; howlOsc.frequency.setValueAtTime(1400,ctx.currentTime);
+ howlOsc.connect(howlGain); howlOsc.start();
+ var startTime=ctx.currentTime;
+ howlInt=setInterval(function(){
+  var t=ctx.currentTime-startTime;
+  var freq=1400+600*Math.sin(2*Math.PI*0.25*t);
+  howlOsc.frequency.setValueAtTime(freq,ctx.currentTime);
+  howlGain.gain.setValueAtTime((Math.sin(t*1.5)+1)/5,ctx.currentTime);
+ },50);
+}
+
+function clearLCD(){ lcd.innerHTML="READY"; }
+function append(t){ if(lcd.innerHTML==="READY") lcd.innerHTML=""; lcd.innerHTML+=t+" "; lcd.scrollLeft=lcd.scrollWidth; }
+
+function stopAll(){
+ try{ if(dial1) dial1.stop(); }catch(e){}
+ try{ if(dial2) dial2.stop(); }catch(e){}
+ if(howlOsc) try{ howlOsc.stop(); }catch(e){}
+ dialOn=false; howlOn=false;
+ if(howlInt) clearInterval(howlInt);
+ if(dialtoneInt) clearInterval(dialtoneInt);
+}
+
+document.addEventListener('keydown',function(e){
+ if(document.activeElement===modeSelect){ e.preventDefault(); return; }
+ var k=e.key.toUpperCase();
+ if(k>='0' && k<='9') playKey(k);
+ else if(k==='K') playKey('KP');
+ else if(k==='S') playKey('ST');
+ else if(k==='H') toggleTone();
+ else if(k==='C') clearLCD();
+ if(mode==="DTMF" && ['Q','W','E','R'].indexOf(k)!==-1){
+  var m={'Q':'A','W':'B','E':'C','R':'D'}; playKey(m[k]);
+ }
+ if(mode==="MF" && ['Q','W','E'].indexOf(k)!==-1){
+  var m={'Q':[1,'5C'],'W':[2,'10C'],'E':[5,'25C']}; playRed(m[k][0],m[k][1]);
+ }
+});
+
 setMode("MF");
-</script>
-</body>
-</html>
+</script></body></html>
